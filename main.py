@@ -39,22 +39,27 @@ def log_response(res):
         # send_email("Error", f"Error status code: {res.status_code}")
 #endregion
 
-
+#region Connect to DB
 conn = pyodbc.connect('Driver={SQL Server};'
                       'Server=MEDA-LTP2620\PRI;'
                       'Database=demo;'
                       'UID=tabula;'
-                      'PWD=6969Kysari12!')
+                      'PWD=12312312')
 
 cursor = conn.cursor()
+#endregion
 
+#region PYODBC example
 sql = '''INSERT INTO ZSFDC_LOADECO_M (LINE, BUBBLEID) 
             VALUES (?, ?)'''
 val = (1, 2)
 cursor.execute(sql, val)
 conn.commit()
+#endregion
 
+#region Priority patch example
 def update_cost(PARTNAME, PRICE):
     r = requests.patch(f"{API_URL}{COMPANY}/LOGPART('{PARTNAME}')", json={ 'PRICE': PRICE }, auth=(PRIORITY_API_USERNAME, PRIORITY_API_PASSWORD))
     log_response(r)
     return r.json()
+#endregion
