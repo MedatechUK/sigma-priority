@@ -1,8 +1,8 @@
 import requests, logging, pyodbc, yaml, os
 
+#region Global variables
 config = yaml.safe_load(open("config.yml"))
 
-#region Global variables
 COMPANY = config["COMPANY"]
 API_URL = config["API_URL"]
 PRIORITY_API_USERNAME= config["PRI_API_USERNAME"]
