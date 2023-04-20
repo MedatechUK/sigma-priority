@@ -1,4 +1,4 @@
-import requests, logging, pyodbc, yaml, os
+import requests, logging, pyodbc, yaml, os, json
 
 #region Global variables
 config = yaml.safe_load(open("config.yml"))
@@ -18,9 +18,9 @@ logging.info('Logging started.')
 
 #region Data Logging
 def send_email(subject, body):
-    server = smtplib.SMTP(SMTP_URL)
+    server = smtplib.SMTP("smtp.gmail.com")
     MSG = f"Subject: {subject}\n\n {body}"
-    server.sendmail(SENDER_EMAIL, RECEIVER_EMAIL, MSG)
+    server.sendmail(my_email, RECEIVER_EMAIL, MSG)
 
     server.quit()
 
@@ -41,25 +41,56 @@ def log_response(res):
 
 #region Connect to DB
 conn = pyodbc.connect('Driver={SQL Server};'
-                      'Server=MEDA-LTP2620\PRI;'
-                      'Database=demo;'
-                      'UID=tabula;'
-                      'PWD=12312312')
+                      'Server=RM-SQL01\SIGMANEST;'
+                      'Database=SNDBase;'
+                      'UID=SNUser;'
+                      'PWD=BestNest1445')
 
 cursor = conn.cursor()
-#endregion
-
-#region PYODBC example
-sql = '''INSERT INTO ZSFDC_LOADECO_M (LINE, BUBBLEID) 
-            VALUES (?, ?)'''
-val = (1, 2)
-cursor.execute(sql, val)
-conn.commit()
+inner_conn = pyodbc.connect('Driver={SQL Server};'
+                      'Server=RM-SQL01\SIGMANEST;'
+                      'Database=SNDBase;'
+                      'UID=SNUser;'
+                      'PWD=BestNest1445')
+cursor1 = inner_conn.cursor()
 #endregion
 
 #region Priority patch example
 def update_cost(PARTNAME, PRICE):
-    r = requests.patch(f"{API_URL}{COMPANY}/LOGPART('{PARTNAME}')", json={ 'PRICE': PRICE }, auth=(PRIORITY_API_USERNAME, PRIORITY_API_PASSWORD))
+    r = requests.patch(f"{API_URL}{COMPANY}/LOGPART('{partname}')", json={ 'PRICE': float(price) }, auth=(PRIORITY_API_USERNAME, PRIORITY_API_PASSWORD))
     log_response(r)
-    return r.json()
+    print (r)
+    if (r.status_code == 200):
+        is_passed = True
+    else:
+        is_passed = False
+    return (is_passed)
+#endregion
+
+
+#region Sigma update
+def update_records (ID):
+    sql1 = '''UPDATE [SNDBase].[dbo].[PRICE_CHANGES] SET IS_UPDATED = 1 WHERE ID = {}'''.format(ID)
+    cursor1.execute(sql1)
+    # conn.commit()    
+    return ()
+#endregion
+
+#region PYODBC 
+sql = '''SELECT ID, PARTCODE, UNIT_COST FROM [SNDBase].[dbo].[PRICE_CHANGES] WHERE IS_UPDATED = 0 ORDER BY ID ASC'''
+cursor.execute(sql)
+for r in cursor:
+    partname = r.PARTCODE
+    price = r.UNIT_COST
+    update_cost(partname, price)
+    update_records (r.ID)
+
+cursor1.close()
+cursor.close()
+conn.commit()
+inner_conn.commit()
+inner_conn.close()
+conn.close()
+
+
 #endregion
